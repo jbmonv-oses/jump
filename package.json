@@ -1,0 +1,15 @@
+{
+  "name": "sept-tours-avant-le-saut",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototype de jeu de tactique au tour par tour dans le navigateur.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node tools/server.js",
+    "test": "node --test",
+    "simulate": "node tools/simulate.js"
+  }
+}
