@@ -1,12 +1,21 @@
 // Outils pour fabriquer des situations de test.
 
-import { createGame, emptyFireGrid } from '../src/rules/state.js';
+import { setupGame, emptyFireGrid, emptyAnnouncements } from '../src/rules/state.js';
 import { parseCell, cellName } from '../src/rules/grid.js';
 
-// Partie sans feu, équipage donné, unités éventuellement replacées.
-// `positions` : { c1: 'A1', ... } ; `fires` : ['C1', ...] ; `intruders` : ['E1', ...]
-export function makeState({ crew = ['firefighter', 'guard', 'technician'], positions = {}, fires = [], intruders = [], seed = 1 } = {}) {
-  const state = createGame({ seed, crew });
+// Situation en phase du joueur, sans feu ni annonce sauf mention contraire.
+// Équipage par défaut : c1 pompier (C3), c2 garde (D3), c3 technicien (E3).
+// - positions : { c1: 'A1' }       - hp : { c1: 1 }
+// - fires : ['C1']                  - systems : { engine: 2 } (points d'état)
+// - intruders : ['E1']              - volleys : ['D2', 'A5']
+// - spreads : [['C1', 'C2']]        - turn : 1
+export function makeState({
+  crew = ['firefighter', 'guard', 'technician'], positions = {}, hp = {}, fires = [],
+  intruders = [], systems = {}, volleys = [], spreads = [], turn = 1, seed = 1,
+} = {}) {
+  const state = setupGame({ seed, crew });
+  state.phase = 'player';
+  state.turn = turn;
   state.fire = emptyFireGrid();
   for (const name of fires) {
     const p = parseCell(name);
@@ -21,9 +30,24 @@ export function makeState({ crew = ['firefighter', 'guard', 'technician'], posit
     });
     state.nextUnitId += 1;
   }
+  for (const [id, value] of Object.entries(hp)) state.units.find((u) => u.id === id).hp = value;
+  for (const [key, value] of Object.entries(systems)) state.systems[key].hp = value;
+  state.announcements = emptyAnnouncements();
+  state.announcements.volleys = volleys.map((n) => ({ pos: parseCell(n) }));
+  state.announcements.spreads = spreads.map(([a, b]) => ({ from: parseCell(a), to: parseCell(b), cancelled: false }));
   return state;
 }
 
 export function names(list) {
   return list.map(cellName).sort();
+}
+
+export function burning(state) {
+  const out = [];
+  state.fire.forEach((row, y) => row.forEach((f, x) => { if (f) out.push(cellName({ x, y })); }));
+  return out.sort();
+}
+
+export function unitHp(state, id) {
+  return state.units.find((u) => u.id === id)?.hp ?? 0;
 }

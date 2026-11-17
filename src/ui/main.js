@@ -2,7 +2,10 @@
 
 import { DEFAULT_CREW } from '../rules/config.js';
 import { createGame } from '../rules/state.js';
-import { crewMoveTargets, moveCrew, unitAt, isFinished } from '../rules/actions.js';
+import {
+  crewMoveTargets, moveCrew, unitAt, findUnit, isFinished,
+  gestureTargets, doGesture, finishCrew, extinguishArea,
+} from '../rules/actions.js';
 import { endTurn } from '../rules/resolve.js';
 import { randomSeed } from '../rules/rng.js';
 import { samePos } from '../rules/grid.js';
@@ -19,6 +22,7 @@ const els = {
 
 let state = null;
 let selectedId = null;
+let gesture = null; // geste choisi pour le membre sélectionné
 
 function seedFromUrl() {
   const raw = new URLSearchParams(location.search).get('seed');
@@ -28,34 +32,63 @@ function seedFromUrl() {
 
 function newGame(seed) {
   state = createGame({ seed, crew: DEFAULT_CREW });
-  selectedId = null;
+  select(null);
   render();
 }
 
-function currentTargets() {
-  return selectedId ? crewMoveTargets(state, selectedId) : [];
+function select(unitId) {
+  selectedId = unitId;
+  gesture = null;
+}
+
+function currentView() {
+  const unit = selectedId ? findUnit(state, selectedId) : null;
+  if (!unit || isFinished(unit) || state.phase !== 'player') select(null);
+  return {
+    selectedId,
+    gesture,
+    moveTargets: selectedId && !gesture ? crewMoveTargets(state, selectedId) : [],
+    gestureTargets: selectedId && gesture ? gestureTargets(state, selectedId, gesture) : [],
+  };
 }
 
 function onCellClick(pos) {
   if (state.phase !== 'player') return;
-  const targets = currentTargets();
-  if (selectedId && targets.some((t) => samePos(t, pos))) {
-    state = moveCrew(state, selectedId, pos);
-    selectedId = null;
+  const view = currentView();
+  if (view.gestureTargets.some((t) => samePos(t, pos))) {
+    state = doGesture(state, selectedId, gesture, pos);
+    select(null);
+  } else if (view.moveTargets.some((t) => samePos(t, pos))) {
+    state = moveCrew(state, selectedId, pos); // il reste sélectionné pour son geste
   } else {
     const unit = unitAt(state, pos);
-    selectedId = unit && unit.kind === 'crew' && !isFinished(unit) && unit.id !== selectedId
-      ? unit.id
-      : null;
+    const selectable = unit && unit.kind === 'crew' && !isFinished(unit) && unit.id !== selectedId;
+    select(selectable ? unit.id : null);
   }
   render();
 }
 
+function previewArea(target) {
+  if (gesture !== 'extinguish') return null;
+  return extinguishArea(findUnit(state, selectedId), target);
+}
+
+function onGesture(g) {
+  gesture = gesture === g ? null : g;
+  render();
+}
+
+function onFinish() {
+  state = finishCrew(state, selectedId);
+  select(null);
+  render();
+}
+
 function render() {
-  const view = { selectedId, targets: currentTargets() };
+  const view = currentView();
   renderBanner(els.banner, state);
-  renderBoard(els.board, state, view, onCellClick);
-  renderSelection(els.selection, state, view);
+  renderBoard(els.board, state, view, { onCellClick, previewArea });
+  renderSelection(els.selection, state, view, { onGesture, onFinish });
   renderLog(els.log, state);
   els.endTurn.disabled = state.phase !== 'player';
 }
@@ -63,7 +96,7 @@ function render() {
 els.endTurn.addEventListener('click', () => {
   if (state.phase !== 'player') return;
   state = endTurn(state);
-  selectedId = null;
+  select(null);
   render();
 });
 

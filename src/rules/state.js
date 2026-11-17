@@ -1,39 +1,21 @@
 // État initial de la partie (section 2.10).
 // L'état est un objet simple, sérialisable en JSON, qui contient tout.
 
-import { MAP, MAP_SYMBOLS, ROLES, VALUES } from './config.js';
-import { WIDTH, HEIGHT, allPositions, samePos } from './grid.js';
+import { ROLES, VALUES } from './config.js';
+import { WIDTH, HEIGHT, readMap, samePos } from './grid.js';
 import { seedToRngState, pick } from './rng.js';
 import { announce } from './announce.js';
-
-// Lecture de la carte : systèmes, cases de départ, cases de sol.
-export function readMap() {
-  const systems = {};
-  const crewStarts = {};
-  const floor = [];
-  for (const pos of allPositions()) {
-    const ch = MAP[pos.y][pos.x];
-    if (MAP_SYMBOLS.systems[ch]) {
-      systems[MAP_SYMBOLS.systems[ch]] = pos;
-    } else {
-      floor.push(pos);
-      if (MAP_SYMBOLS.crewStarts.includes(ch)) crewStarts[ch] = pos;
-    }
-  }
-  return {
-    systems,
-    crewStarts: MAP_SYMBOLS.crewStarts.map((ch) => crewStarts[ch]),
-    floor,
-  };
-}
 
 export function emptyFireGrid() {
   return Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(false));
 }
 
-// Crée une partie et joue la phase 1 du tour 1.
-// `crew` : liste ordonnée de clés de rôles (trois rôles différents).
-export function createGame({ seed, crew }) {
+export function emptyAnnouncements() {
+  return { volleys: [], spreads: [], boarding: null };
+}
+
+// Mise en place sans la phase 1 : utile aux tests qui composent une situation.
+export function setupGame({ seed, crew }) {
   if (crew.length !== VALUES.crewSize || new Set(crew).size !== crew.length) {
     throw new Error(`L'équipage doit compter ${VALUES.crewSize} rôles différents.`);
   }
@@ -69,7 +51,7 @@ export function createGame({ seed, crew }) {
     candidates = candidates.filter((p) => !samePos(p, r.value));
   }
 
-  const state = {
+  return {
     seed,
     rng,
     turn: 1,
@@ -79,8 +61,13 @@ export function createGame({ seed, crew }) {
     units,
     nextUnitId: 1, // compteur des intrus (ordre d'arrivée)
     fire,
-    announcements: { volleys: [], spreads: [], boarding: null },
+    announcements: emptyAnnouncements(),
     log: [],
   };
-  return announce(state);
+}
+
+// Crée une partie et joue la phase 1 du tour 1.
+// `crew` : liste ordonnée de clés de rôles (trois rôles différents).
+export function createGame({ seed, crew }) {
+  return announce(setupGame({ seed, crew }));
 }

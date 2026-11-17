@@ -46,6 +46,24 @@ Node 20 ou plus. Aucune dépendance, aucun framework, aucune étape de compilati
 }
 ```
 
+Modules de `src/rules/` : `config`, `rng`, `grid` (géométrie, lecture de carte), `board` (lectures de l'état, dégâts, défaite), `state` (mise en place), `announce` (phase 1), `actions` (phase 2), `resolve` (phase 3).
+
+## Décisions prises sur les ambiguïtés (17/11/2026)
+
+1. Un seul déplacement par tour, jusqu'à la portée, non fractionnable.
+2. Bouton « Terminer » pour griser un membre sans geste. Un membre est grisé seulement après geste ou « Terminer ».
+3. Éteindre la source d'une propagation l'annule définitivement (`spread.cancelled`), même si une salve la rallume.
+4. Départage des cases et chemins : parcours en largeur, voisins explorés haut, droite, bas, gauche ; la première case trouvée gagne.
+5. Propagations tirées une à une, uniformément parmi les paires encore compatibles.
+6. Repli d'abordage : distance à vol d'oiseau (Manhattan) ; aucune case libre → pas d'intrus.
+7. Intrus sans système atteignable mais déjà au contact d'un équipier : reste sur place.
+8. Recul fort à travers le feu : seule la case d'arrivée blesse ; heurt et feu se cumulent.
+9. Heurt contre un système : l'unité **et** le système perdent 1 point.
+10. Unité poussée dans le feu : perd 1 PV tout de suite, mais ne reprend pas de dégât du feu à l'étape 2 de la résolution du même tour.
+11. Éteindre fort : toute case adjacente de la grille, système compris.
+12. Un équipier bousculé avant d'avoir agi garde son déplacement et son geste.
+13. Salve sur le sol : uniquement une case sans feu **et** sans unité au moment de l'annonce. Système visé tiré à chances égales parmi les non détruits.
+
 ## Méthode de travail
 
 - Une étape de la section 5 à la fois. À la fin : tests verts, jeu lancé, court message « quoi essayer ». Attendre l'accord avant l'étape suivante.

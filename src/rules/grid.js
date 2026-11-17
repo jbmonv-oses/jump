@@ -1,7 +1,7 @@
 // Géométrie de la grille : coordonnées, noms de cases, adjacences, chemins.
 // Une position est { x, y } : x = colonne (0 = A), y = ligne (0 = ligne 1).
 
-import { MAP, DIRECTIONS } from './config.js';
+import { MAP, MAP_SYMBOLS, DIRECTIONS } from './config.js';
 
 export const WIDTH = MAP[0].length;
 export const HEIGHT = MAP.length;
@@ -42,6 +42,32 @@ export function allPositions() {
     for (let x = 0; x < WIDTH; x++) out.push({ x, y });
   }
   return out;
+}
+
+// Lecture de la carte : systèmes, cases de départ, cases de sol (ordre de lecture).
+export function readMap() {
+  const systems = {};
+  const crewStarts = {};
+  const floor = [];
+  for (const pos of allPositions()) {
+    const ch = MAP[pos.y][pos.x];
+    if (MAP_SYMBOLS.systems[ch]) {
+      systems[MAP_SYMBOLS.systems[ch]] = pos;
+    } else {
+      floor.push(pos);
+      if (MAP_SYMBOLS.crewStarts.includes(ch)) crewStarts[ch] = pos;
+    }
+  }
+  return {
+    systems,
+    crewStarts: MAP_SYMBOLS.crewStarts.map((ch) => crewStarts[ch]),
+    floor,
+  };
+}
+
+// Direction (élément de DIRECTIONS) qui mène de `from` à la case adjacente `to`.
+export function directionBetween(from, to) {
+  return DIRECTIONS.find((d) => from.x + d.dx === to.x && from.y + d.dy === to.y) ?? null;
 }
 
 // Parcours en largeur à partir de `start`.

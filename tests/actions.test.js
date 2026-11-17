@@ -51,9 +51,9 @@ test('déplacer rend un nouvel état sans modifier l\'ancien', () => {
   assert.equal(cellName(findUnit(next, 'c3').pos), 'E1');
 });
 
-test('un seul déplacement par tour, puis le membre est grisé', () => {
+test('un seul déplacement par tour ; le membre n\'est pas grisé tant qu\'il peut faire un geste', () => {
   const s = moveCrew(makeState(), 'c3', parseCell('E2'));
-  assert.ok(isFinished(findUnit(s, 'c3')));
+  assert.ok(!isFinished(findUnit(s, 'c3')));
   assert.deepEqual(crewMoveTargets(s, 'c3'), []);
   assert.throws(() => moveCrew(s, 'c3', parseCell('E1')));
 });
