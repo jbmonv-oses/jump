@@ -4,7 +4,7 @@ import { DEFAULT_CREW } from '../rules/config.js';
 import { createGame } from '../rules/state.js';
 import {
   crewMoveTargets, moveCrew, unitAt, findUnit, isFinished,
-  gestureTargets, doGesture, finishCrew, extinguishArea,
+  gestureTargets, doGesture, finishCrew, extinguishArea, strikePreview,
 } from '../rules/actions.js';
 import { endTurn } from '../rules/resolve.js';
 import { randomSeed } from '../rules/rng.js';
@@ -69,8 +69,9 @@ function onCellClick(pos) {
 }
 
 function previewArea(target) {
-  if (gesture !== 'extinguish') return null;
-  return extinguishArea(findUnit(state, selectedId), target);
+  if (gesture === 'extinguish') return extinguishArea(findUnit(state, selectedId), target);
+  if (gesture === 'strike') return strikePreview(state, selectedId, target);
+  return null;
 }
 
 function onGesture(g) {

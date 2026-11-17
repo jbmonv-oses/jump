@@ -39,6 +39,7 @@ export function setupGame({ seed, crew }) {
     hp: VALUES.crewHp,
     moved: false,
     acted: false,
+    scorched: false, // brûlé par un recul ce tour-ci (pas de 2e dégât de feu)
   }));
 
   // Feu initial : cases de sol tirées au sort, hors cases de départ.

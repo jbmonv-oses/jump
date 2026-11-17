@@ -70,6 +70,45 @@ export function directionBetween(from, to) {
   return DIRECTIONS.find((d) => from.x + d.dx === to.x && from.y + d.dy === to.y) ?? null;
 }
 
+export function step(pos, dir) {
+  return { x: pos.x + dir.dx, y: pos.y + dir.dy };
+}
+
+export function manhattan(a, b) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+// Plus court chemin vers la première case but trouvée par un parcours en largeur
+// (voisins explorés haut, droite, bas, gauche). Rend la liste des cases à parcourir
+// (départ exclu) : [] si le départ est déjà un but, null si aucun but n'est accessible.
+export function findPath(start, canEnter, isGoal) {
+  if (isGoal(start)) return [];
+  const key = (p) => p.y * WIDTH + p.x;
+  const parent = new Map([[key(start), null]]);
+  let frontier = [start];
+  while (frontier.length > 0) {
+    const next = [];
+    for (const pos of frontier) {
+      for (const n of neighbors(pos)) {
+        if (parent.has(key(n)) || !canEnter(n)) continue;
+        parent.set(key(n), pos);
+        if (isGoal(n)) {
+          const path = [n];
+          let p = pos;
+          while (!samePos(p, start)) {
+            path.unshift(p);
+            p = parent.get(key(p));
+          }
+          return path;
+        }
+        next.push(n);
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}
+
 // Parcours en largeur à partir de `start`.
 // `canEnter(pos)` : la case peut-elle être traversée ?
 // `canStop(pos)`  : la case peut-elle être une destination ?

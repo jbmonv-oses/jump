@@ -36,8 +36,8 @@ Node 20 ou plus. Aucune dépendance, aucun framework, aucune étape de compilati
   outcome,                   // null | { result: 'victory' | 'defeat', cause }
   systems: { engine: { pos, hp }, shield, oxygen, piloting },
   units: [                   // ordre du tableau = ordre d'arrivée
-    { id: 'c1', kind: 'crew', role, pos, hp, moved, acted },
-    { id: 'i1', kind: 'intruder', pos, hp, attackDir },
+    { id: 'c1', kind: 'crew', role, pos, hp, moved, acted, scorched },
+    { id: 'i1', kind: 'intruder', pos, hp, attackDir, scorched },  // attackDir : 'up' | … | null
   ],
   nextUnitId,
   fire,                      // booléens fire[y][x]
@@ -59,7 +59,7 @@ Modules de `src/rules/` : `config`, `rng`, `grid` (géométrie, lecture de carte
 7. Intrus sans système atteignable mais déjà au contact d'un équipier : reste sur place.
 8. Recul fort à travers le feu : seule la case d'arrivée blesse ; heurt et feu se cumulent.
 9. Heurt contre un système : l'unité **et** le système perdent 1 point.
-10. Unité poussée dans le feu : perd 1 PV tout de suite, mais ne reprend pas de dégât du feu à l'étape 2 de la résolution du même tour.
+10. Unité poussée dans le feu : perd 1 PV tout de suite, mais ne reprend pas de dégât du feu à l'étape 2 de la résolution du même tour (`unit.scorched`, remis à faux en phase 1). Le dégât « fin de recul dans le feu » ne s'applique que si la cible a réellement bougé.
 11. Éteindre fort : toute case adjacente de la grille, système compris.
 12. Un équipier bousculé avant d'avoir agi garde son déplacement et son geste.
 13. Salve sur le sol : uniquement une case sans feu **et** sans unité au moment de l'annonce. Système visé tiré à chances égales parmi les non détruits.

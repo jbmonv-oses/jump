@@ -1,17 +1,56 @@
 // Phase 3 : résolution (section 2.5), dans un ordre fixe :
-// 1. attaques des intrus (étape 3), 2. dégâts du feu, 3. salves,
-// 4. propagation du feu, 5. arrivée de l'intrus annoncé (étape 3).
+// 1. attaques des intrus, 2. dégâts du feu, 3. salves,
+// 4. propagation du feu, 5. arrivée de l'intrus annoncé.
 // Aucun tirage au sort ici. La défaite est vérifiée après chaque étape.
 
-import { VALUES } from './config.js';
-import { neighbors, cellName } from './grid.js';
+import { VALUES, DIRECTIONS } from './config.js';
+import { neighbors, cellName, readMap, manhattan, step } from './grid.js';
 import { announce } from './announce.js';
 import {
-  unitAt, systemAt, isOnFire, isDestroyed, isFireImmune, setFire,
+  unitAt, systemAt, isOnFire, isDestroyed, isFireImmune, setFire, intruders, directionName,
   damageUnit, damageSystem, removeDead, checkDefeat, addLog,
 } from './board.js';
 
-const STEPS = [fireDamage, volleys, fireSpread];
+const STEPS = [intruderAttacks, fireDamage, volleys, fireSpread, boardingArrival];
+
+// Étape 1 : chaque intrus encore debout frappe la case dans la direction annoncée,
+// depuis sa position actuelle. Ordre d'arrivée.
+function intruderAttacks(state) {
+  for (const intruder of intruders(state)) {
+    if (intruder.hp <= 0 || !intruder.attackDir) continue;
+    const dir = DIRECTIONS.find((d) => d.key === intruder.attackDir);
+    const target = step(intruder.pos, dir);
+    const reason = `attaque de l'intrus en ${cellName(intruder.pos)}`;
+    const key = systemAt(state, target);
+    const unit = unitAt(state, target);
+    if (key && !isDestroyed(state.systems[key])) damageSystem(state, key, VALUES.damage.intruderAttack, reason);
+    else if (unit) damageUnit(state, unit, VALUES.damage.intruderAttack, reason);
+    else addLog(state, `L'intrus en ${cellName(intruder.pos)} frappe vers ${directionName(intruder.attackDir)} dans le vide.`);
+    removeDead(state);
+  }
+}
+
+// Étape 5 : l'intrus annoncé apparaît. Si la case est occupée ou en feu, il apparaît sur la
+// case de sol libre et sans feu la plus proche (à égalité, ordre de lecture).
+function boardingArrival(state) {
+  const boarding = state.announcements.boarding;
+  if (!boarding) return;
+  const free = (p) => !unitAt(state, p) && !isOnFire(state, p);
+  let pos = boarding.pos;
+  if (!free(pos)) {
+    const candidates = readMap().floor.filter(free); // déjà en ordre de lecture
+    if (candidates.length === 0) {
+      addLog(state, 'Aucune case libre : l\'intrus ne peut pas aborder.');
+      return;
+    }
+    pos = candidates.reduce((best, p) => (manhattan(p, boarding.pos) < manhattan(best, boarding.pos) ? p : best));
+  }
+  state.units.push({
+    id: `i${state.nextUnitId}`, kind: 'intruder', pos, hp: VALUES.intruderHp, attackDir: null, scorched: false,
+  });
+  state.nextUnitId += 1;
+  addLog(state, `Un intrus aborde en ${cellName(pos)}.`);
+}
 
 export function resolveTurn(state) {
   if (state.phase !== 'player') throw new Error('La résolution suit la phase du joueur.');
@@ -27,11 +66,12 @@ export function resolveTurn(state) {
   return next;
 }
 
-// Étape 2 : chaque unité sur une case en feu perd 1 PV (sauf le pompier) ;
-// chaque système non détruit adjacent à au moins une case en feu perd 1 point.
+// Étape 2 : chaque unité sur une case en feu perd 1 PV (sauf le pompier, et sauf une unité
+// déjà brûlée par un recul ce tour-ci) ; chaque système non détruit adjacent à au moins
+// une case en feu perd 1 point.
 function fireDamage(state) {
   for (const unit of state.units) {
-    if (isOnFire(state, unit.pos) && !isFireImmune(unit)) {
+    if (isOnFire(state, unit.pos) && !isFireImmune(unit) && !unit.scorched) {
       damageUnit(state, unit, VALUES.damage.fire, 'feu');
     }
   }

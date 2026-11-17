@@ -11,7 +11,7 @@ import { parseCell, cellName } from '../src/rules/grid.js';
 // - spreads : [['C1', 'C2']]        - turn : 1
 export function makeState({
   crew = ['firefighter', 'guard', 'technician'], positions = {}, hp = {}, fires = [],
-  intruders = [], systems = {}, volleys = [], spreads = [], turn = 1, seed = 1,
+  intruders = [], systems = {}, volleys = [], spreads = [], boarding = null, turn = 1, seed = 1,
 } = {}) {
   const state = setupGame({ seed, crew });
   state.phase = 'player';
@@ -24,9 +24,11 @@ export function makeState({
   for (const [id, name] of Object.entries(positions)) {
     state.units.find((u) => u.id === id).pos = parseCell(name);
   }
-  for (const name of intruders) {
+  // Intrus : 'E1' ou { at: 'E1', dir: 'up', hp: 1 }, dans l'ordre d'arrivée.
+  for (const entry of intruders) {
+    const { at, dir = null, hp: life = 2 } = typeof entry === 'string' ? { at: entry } : entry;
     state.units.push({
-      id: `i${state.nextUnitId}`, kind: 'intruder', pos: parseCell(name), hp: 2, attackDir: null,
+      id: `i${state.nextUnitId}`, kind: 'intruder', pos: parseCell(at), hp: life, attackDir: dir, scorched: false,
     });
     state.nextUnitId += 1;
   }
@@ -35,6 +37,7 @@ export function makeState({
   state.announcements = emptyAnnouncements();
   state.announcements.volleys = volleys.map((n) => ({ pos: parseCell(n) }));
   state.announcements.spreads = spreads.map(([a, b]) => ({ from: parseCell(a), to: parseCell(b), cancelled: false }));
+  if (boarding) state.announcements.boarding = { pos: parseCell(boarding) };
   return state;
 }
 

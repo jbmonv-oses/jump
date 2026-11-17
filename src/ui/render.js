@@ -1,8 +1,8 @@
 // Affichage de l'état. Aucune règle de jeu ici : on lit l'état et les listes
 // calculées par src/rules/.
 
-import { ROLES, SYSTEMS, VALUES, INTRUDER, FIRE_EMOJI, GESTURES } from '../rules/config.js';
-import { WIDTH, HEIGHT, cellName, samePos, directionBetween } from '../rules/grid.js';
+import { ROLES, SYSTEMS, VALUES, INTRUDER, FIRE_EMOJI, GESTURES, DIRECTIONS } from '../rules/config.js';
+import { WIDTH, HEIGHT, cellName, samePos, directionBetween, step } from '../rules/grid.js';
 import {
   unitAt, systemAt, isOnFire, isFinished, findUnit, moveRange, crewGestures, gestureTargets,
 } from '../rules/actions.js';
@@ -10,6 +10,8 @@ import {
 const ARROWS = { up: '▲', right: '▶', down: '▼', left: '◀' };
 // Bord de la case cible par lequel arrive le feu, selon la direction de propagation.
 const ENTRY_EDGE = { up: 'bottom', right: 'left', down: 'top', left: 'right' };
+// Bord de la case de l'intrus par lequel part son attaque.
+const EXIT_EDGE = { up: 'top', right: 'right', down: 'bottom', left: 'left' };
 
 export function renderBanner(el, state) {
   const systems = Object.entries(state.systems)
@@ -105,6 +107,25 @@ function renderCell(state, view, pos) {
       cell.classList.add('volley');
       tips.push('visée par une salve');
       cell.insertAdjacentHTML('beforeend', '<span class="volley-mark">🎯</span>');
+    }
+    const boarding = state.announcements.boarding;
+    if (boarding && samePos(boarding.pos, pos)) {
+      cell.classList.add('boarding');
+      tips.push('abordage annoncé');
+      cell.insertAdjacentHTML('beforeend', '<span class="boarding-mark">🌀</span>');
+    }
+    if (unit?.kind === 'intruder' && unit.attackDir) {
+      tips.push(`attaque vers ${DIRECTIONS.find((d) => d.key === unit.attackDir).name}`);
+      cell.insertAdjacentHTML('beforeend',
+        `<span class="attack-arrow edge-${EXIT_EDGE[unit.attackDir]}">${ARROWS[unit.attackDir]}</span>`);
+    }
+    for (const attacker of state.units) {
+      if (attacker.kind !== 'intruder' || !attacker.attackDir) continue;
+      const dir = DIRECTIONS.find((d) => d.key === attacker.attackDir);
+      if (samePos(step(attacker.pos, dir), pos)) {
+        cell.classList.add('attacked');
+        tips.push(`attaquée par l'intrus en ${cellName(attacker.pos)}`);
+      }
     }
     for (const spread of state.announcements.spreads) {
       if (spread.cancelled || !samePos(spread.to, pos)) continue;

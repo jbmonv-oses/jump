@@ -2,8 +2,8 @@
 // Les fonctions qui modifient (`set…`, `damage…`, `removeDead`, `checkDefeat`) travaillent
 // sur une copie déjà faite par l'appelant : les règles publiques restent pures.
 
-import { ROLES, SYSTEMS } from './config.js';
-import { inBounds, samePos, cellName, allPositions } from './grid.js';
+import { ROLES, SYSTEMS, DIRECTIONS } from './config.js';
+import { inBounds, samePos, cellName, allPositions, step } from './grid.js';
 
 export function unitAt(state, pos) {
   return state.units.find((u) => samePos(u.pos, pos)) ?? null;
@@ -45,6 +45,23 @@ export function systemLabel(key) {
   return /^[aeiouéè]/.test(name) ? `l'${name}` : `le ${name}`;
 }
 
+// Systèmes non détruits adjacents à `pos`, avec la direction, dans l'ordre haut, droite, bas, gauche.
+export function adjacentSystems(state, pos) {
+  return DIRECTIONS
+    .map((dir) => ({ dir, key: systemAt(state, step(pos, dir)) }))
+    .filter(({ key }) => key && !isDestroyed(state.systems[key]));
+}
+
+export function adjacentCrew(state, pos) {
+  return DIRECTIONS
+    .map((dir) => ({ dir, unit: unitAt(state, step(pos, dir)) }))
+    .filter(({ unit }) => unit && unit.kind === 'crew');
+}
+
+export function intruders(state) {
+  return state.units.filter((u) => u.kind === 'intruder');
+}
+
 export function setFire(state, pos, burning) {
   state.fire[pos.y][pos.x] = burning;
 }
@@ -70,7 +87,11 @@ export function damageSystem(state, key, amount, reason) {
     + (isDestroyed(sys) ? ' Il est détruit.' : ''));
 }
 
-// Retire les unités à 0 point de vie.
+export function directionName(key) {
+  return DIRECTIONS.find((d) => d.key === key).name;
+}
+
+// Retire les unités à 0 point de vie (une unité à 0 quitte la grille aussitôt).
 export function removeDead(state) {
   for (const unit of state.units.filter((u) => u.hp <= 0)) {
     log(state, `${capitalize(unitLabel(unit))} en ${cellName(unit.pos)} est hors de combat.`);
